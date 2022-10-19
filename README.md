@@ -48,18 +48,12 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- CONTACT -->
 ## Contact
@@ -82,4 +76,4 @@ Twitter - [@wamaithanyamu](https://twitter.com/wamaithanyamu)
 [license-url]: https://github.com/wamaithanyamu/YTFOREXBOTS/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/wamaithanyamu
-[product-screenshot]: images/one.png
+[product-screenshot]: Images/one.png
