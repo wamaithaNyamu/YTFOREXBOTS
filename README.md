@@ -31,8 +31,9 @@
 
 [![Product Name Screen Shot][product-screenshot]](https://www.youtube.com/channel/UCTgufBSxzrj7VSLwEEnu7Jw)
 
-This repo contains all the code used on my YT channel for the bots I have created. 
+This repo contains all the code used on my [YT channel]((https://www.youtube.com/channel/UCTgufBSxzrj7VSLwEEnu7Jw)) for the bots I have created. 
 
+All compiled bots can be downloaded here -> 
 
 <!-- CONTRIBUTING -->
 ## Contributing
