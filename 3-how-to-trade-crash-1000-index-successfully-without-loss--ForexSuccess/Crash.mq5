@@ -8,14 +8,11 @@
 #property version   "1.00";
 
 #property indicator_separate_window
-#property indicator_buffers 5
-#property indicator_plots   5
-//--- limits for displaying of values in the indicator window
-#property indicator_maximum 100
-#property indicator_minimum 0
+#property indicator_buffers 1
+#property indicator_plots   1
+
 //--- horizontal levels in the indicator window
-#property indicator_level1  90.0
-#property indicator_level2  10.0
+#property indicator_level1 2
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -26,31 +23,29 @@
 CTrade trade;
 // variables the user will define
 
-input double lotSizeInput = 0.1;
-input double stopLossInput = 10;
-input double takeProfitInput = 10;
+input double lotSizeInput = 0.2;
 input ulong magicNumber = 1234;
 
 
 // indicator buffers
-double RSIBUFFER[];
-double MABUFFER[];
-double ENVUPPERBUFFER[];
-double ENVLOWERBUFFER[];
+double ATRBUFFER[];
 
 // boolean for converting buffer to series
 
 bool AsSeries = true;
 
 // indicator handles
-int RSIHandle;
-int MAHandle;
-int ENVUPPERHandle;
-int ENVLOWERHandle;
+int ATRHandle;
 
 
+// Variables
 
+int RSIPeriod = 10 ;
+int MAPeriod = 10;
 
+input int candlesToStayInTrade = 6;
+int candlesCovered = 0 ;
+bool inTrade = false;
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -58,37 +53,15 @@ int ENVLOWERHandle;
 int OnInit()
   {
 
+   SetIndexBuffer(1,ATRBUFFER,INDICATOR_DATA);
+   ArraySetAsSeries(ATRBUFFER,   AsSeries);
+   ArrayGetAsSeries(ATRBUFFER);
 
 
-
-   SetIndexBuffer(1,MABUFFER,INDICATOR_DATA);
-   ArraySetAsSeries(MABUFFER,   AsSeries);
-   ArrayGetAsSeries(MABUFFER);
-
-
-   SetIndexBuffer(2,ENVUPPERBUFFER,INDICATOR_DATA);
-   ArraySetAsSeries(ENVUPPERBUFFER,   AsSeries);
-   ArrayGetAsSeries(ENVUPPERBUFFER);
-
-
-   SetIndexBuffer(3,ENVLOWERBUFFER,INDICATOR_DATA);
-   ArraySetAsSeries(ENVLOWERBUFFER,   AsSeries);
-   ArrayGetAsSeries(ENVLOWERBUFFER);
-
-
-//  RSI
-   RSIHandle = iRSI(_Symbol,PERIOD_CURRENT,10,PRICE_CLOSE);
-
-//  MA
-   MAHandle = iMA(_Symbol,PERIOD_CURRENT,10,0,MODE_EMA,PRICE_CLOSE);
-
-// ENVELOPE
-   ENVUPPERHandle =iEnvelopes(_Symbol,PERIOD_CURRENT,30,0,MODE_SMA,PRICE_CLOSE,0.900);
-   ENVLOWERHandle =iEnvelopes(_Symbol,PERIOD_CURRENT,70,0,MODE_SMA,PRICE_CLOSE,0.900);
-
+   ATRHandle = iATR(_Symbol,PERIOD_CURRENT,14);
 
 //--- if the handle is not created
-   if(RSIHandle == INVALID_HANDLE || MAHandle == INVALID_HANDLE || ENVUPPERHandle  == INVALID_HANDLE || ENVLOWERHandle  == INVALID_HANDLE)
+   if(ATRHandle == INVALID_HANDLE)
      {
       //--- tell about the failure and output the error code
       Print("Failed to create one of the handles of the  indicator for the symbol %s/%s, error code %d",
@@ -103,26 +76,27 @@ int OnInit()
 //---
    return(INIT_SUCCEEDED);
   }
-  
 
 
-  
-  
+
+
+
 //+------------------------------------------------------------------+
 //| Indicator deinitialization function                              |
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
-   if(RSIHandle != INVALID_HANDLE || MAHandle != INVALID_HANDLE || ENVUPPERHandle  != INVALID_HANDLE || ENVLOWERHandle  != INVALID_HANDLE)
+   if(ATRHandle != INVALID_HANDLE)
 
-      IndicatorRelease(RSIHandle);
-   IndicatorRelease(MAHandle);
-   IndicatorRelease(ENVUPPERHandle);
-   IndicatorRelease(ENVLOWERHandle);
+      IndicatorRelease(ATRHandle);
+
 
 //--- clear the chart after deleting the indicator
    Comment("");
   }
+
+
+
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
 //+------------------------------------------------------------------+
@@ -131,22 +105,73 @@ void OnTick()
 //---
 
 // ensure its on new candle
-   double open_for_current_candle = iOpen(_Symbol, PERIOD_CURRENT, 1);
+   double open_for_current_candle = iOpen(_Symbol, PERIOD_CURRENT, 0);
    double close_for_last_candle =  iClose(_Symbol, PERIOD_CURRENT, 0);
 
-   if(open_for_current_candle == close_for_last_candle)
+// define a new candle forming
+   if(close_for_last_candle == open_for_current_candle)
      {
 
-      // Crash if evelope is greater than 90 and the MA touches the envelope line go for sale
-      // boom if envelope is 10 or less than 10 and MA touches envelope go for buy
+      CopyBuffer(ATRHandle, 0,0,2,ATRBUFFER);
+      double value_of_ATR = ATRBUFFER[0];
 
 
-      // Crash if enevelope is at 10 and the ma touches the envelope go for buy
+      // Strategy
+      // Only works on M1
+      // Buying when the ATR is greater than 2, take 6 candles and close
+      if(value_of_ATR >= 2)
+        {
+         Print("ATR is above 2");
+         // check if we are currently in a trade
+         if(inTrade == false)
+           {
+            // place a buy and stay in for six candles
+            trade.SetExpertMagicNumber(magicNumber);
+            double min_volume = NormalizeDouble(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),_Digits);
+            double useLotSize = lotSizeInput;
+            if (lotSizeInput < min_volume){
+               useLotSize = min_volume;
+            }
+            trade.Buy(useLotSize,_Symbol,0,0,0,"Subscribe to Wamaitha channel");
+            inTrade = true;
+           }
+        }
 
-     };
+      if(inTrade && candlesCovered <= candlesToStayInTrade)
+        {
 
+         candlesCovered = candlesCovered +1;
 
+        }
 
+      if(inTrade && candlesCovered == candlesToStayInTrade)
+        {
+        
+        
+         for(int i = PositionsTotal()-1; i>= 0; i--)
+           {
+            ulong posTicket = PositionGetTicket(i);
+            CPositionInfo pos;
+            if(pos.SelectByMagic(_Symbol,magicNumber))
+              {
 
+               if(pos.SelectByTicket(posTicket))
+                 {
+                 
+                  trade.PositionClose(posTicket);
+                  inTrade = false;
+                  Print("position closed");
+                }
+
+              }
+
+           }
+           
+           candlesCovered = 0;
+        }
+
+      Comment("The ATR value is ", value_of_ATR);
+
+     }
   }
 //+------------------------------------------------------------------+
